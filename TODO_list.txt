@@ -1,3 +1,2 @@
-1) fix bugs related to command handler
-2) create a simple file system
-3) add commands to display date and time
+1) create a simple file system
+2) add commands to display date and time

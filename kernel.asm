@@ -94,25 +94,27 @@ read_command:
 
 execute_command:
     mov si, command_buffer
-    cmp byte [si], 'h'
-    cmp byte [si+1], 'e'
-    cmp byte [si+2], 'l'
-    cmp byte [si+3], 'p'
+    
+    ;проверка на help
+    mov di, help_cmd
+    call compare_strings
     je do_help
-    cmp byte [si], 'c'
-    cmp byte [si+1], 'l'
-    cmp byte [si+2], 's'
+    ;проверка на cls
+    mov di, cls_cmd
+    call compare_strings
     je do_cls
-    cmp byte [si], 's'
-    cmp byte [si+1], 'h'
-    cmp byte [si+2], 'u'
-    cmp byte [si+3], 't'
+
+    ; проверка на shut
+    mov di, shut_cmd
+    call compare_strings
     je do_shutdown
-    cmp byte [si], 'l'
-    cmp byte [si+1], 'o'
-    cmp byte [si+2], 'a'
-    cmp byte [si+3], 'd'
+
+    ;проверка на load
+    mov di, load_cmd
+    call compare_strings
     je load_program
+
+    ;если не распознано
     call unknown_command
     ret
 
@@ -127,10 +129,19 @@ do_help:
     ret
 
 do_cls:
-    mov cx, 25
-.clear_loop:
-    call print_newline
-    loop .clear_loop
+    mov ah, 0x06
+    mov al, 0x00
+    mov bh, 0x07
+    mov cx, 0x0000
+    mov dx, 0x184F
+    int 0x10
+
+    mov ah, 0x02
+    mov bh, 0x00
+    mov dh, 0x00
+    mov dl, 0x00
+    int 0x10
+
     ret
 
 unknown_command:
@@ -145,6 +156,30 @@ do_shutdown:
     mov cx, 0x0003
     int 0x15
     ret
+
+compare_strings:
+    push si                 ;сохраняем SI
+    push di                 ;сохраняем DI
+    .compare_loop:
+        lodsb               ; загружаем символ из [SI] в AL и увеличиваем SI
+        scasb               ; сравниваем AL с символом по адресу [DI] и увеличиваем DI
+        jne .not_equal      ; если символы не равны, выходим с флагом неравенства
+        cmp al, 0           ;проверяем, достигли ли конца строки (нулевой байт)
+        je .equal           ;Если достигли конца строки, строки равны
+        jmp .compare_loop   ; Продолжаем сравнение
+    .not_equal:
+        pop di              ;восстанавливаем DI
+        pop si              ;восстанавливаем SI
+        ret                 ;возвращаемся, если строки не равны
+    .equal:
+        pop di              ; Восстанавливаем DI
+        pop si              ; Восстанавливаем SI
+        ret                 ; Возвращаемся, если строки равны     ; Возвращаемся, если строки равны
+
+help_cmd db "help", 0
+cls_cmd db "cls", 0
+shut_cmd db "shut", 0
+load_cmd db "load", 0
     
 load_program:
     mov si, command_buffer
@@ -222,7 +257,7 @@ read_from_sector:
 write_error db 'Write error!', 0
 read_error db 'Read error!', 0
         
-header db '============================= x16 PRos v0.1 ====================================', 0
+header db '=============================    XorisOS    ====================================', 0
 menu db '_________________________________________________', 10, 13, 10 ,13
      db 'Commands:', 10, 13, 10, 13
      db '  help - get list of the commands', 10, 13
@@ -231,10 +266,9 @@ menu db '_________________________________________________', 10, 13, 10 ,13
      db '  load <sector num> - load program from disk sector', 10, 13
      db '_________________________________________________', 0
 unknown_msg db 'Unknown command.', 0
-prompt db '[PRos] > ', 0
+prompt db 'user#xos~$ ', 0
 mt db '', 10, 13, 0
 success_msg db 'Data written successfully!', 10, 13, 0
 buffer db 512 dup(0)
 text_to_write db 'Hello!', 0
 command_buffer db 256 dup(0)
-
